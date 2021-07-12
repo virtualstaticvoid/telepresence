@@ -15,7 +15,7 @@ The output of `make help` shows some of this information, but not all of it, and
 ## Build the binaries
 
 ```console
-$ make build
+$ make build # use .\winmake.bat build on windows
 mkdir -p build-output/bin
 go build -ldflags=-X=github.com/telepresenceio/telepresence/v2/pkg/version.Version=v0.2.0-1605793571 -o build-output/bin ./cmd/...
 
@@ -164,6 +164,12 @@ In the long run we'll improve this to work more like classic Telepresence, but e
 1. Add a `vSEMVER` tag for the new version: `git tag -a v0.x.y -m "Release 0.x.y"`
 2. Push the tag to GitHub: `git push origin v0.x.y`
 3. Wait for CI to run
+
+## Developing on Windows
+
+### Building on Windows
+
+We do not currently support using `make` directly to build on Windows. Instead, use `winmake.bat` and pass it the same parameters you would pass to make. `winmake.bat` will run `make` from inside a Docker container, with appropriate parameters to build windows binaries.
 
 ## Log output
 
