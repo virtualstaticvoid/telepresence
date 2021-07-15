@@ -31,6 +31,7 @@ import (
 const (
 	callbackPath = "/callback"
 	apikeysFile  = "apikeys.json"
+	keyDescRoot  = ""
 )
 
 var ErrNotLoggedIn = errors.New("not logged in")
@@ -70,6 +71,7 @@ type loginExecutor struct {
 type LoginExecutor interface {
 	Worker(ctx context.Context) error
 	Login(ctx context.Context) error
+	LoginAPIKey(ctx context.Context, key string) error
 	Logout(ctx context.Context) error
 	GetAPIKey(ctx context.Context, description string) (string, error)
 	GetLicense(ctx context.Context, id string) (string, string, error)
@@ -341,6 +343,17 @@ func (l *loginExecutor) Login(ctx context.Context) (err error) {
 	}
 }
 
+func (l *loginExecutor) LoginAPIKey(ctx context.Context, apikey string) (err error) {
+	l.loginMu.Lock()
+	defer l.loginMu.Unlock()
+
+	l.apikeys[l.env.LoginDomain][keyDescRoot] = apikey
+	if err := cache.SaveToUserCache(ctx, l.apikeys, apikeysFile); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (l *loginExecutor) Logout(ctx context.Context) error {
 	l.loginMu.Lock()
 	defer l.loginMu.Unlock()
@@ -379,18 +392,23 @@ func (l *loginExecutor) getToken(ctx context.Context) (string, error) {
 
 // Must hold l.loginMu to call this.
 func (l *loginExecutor) lockedGetCreds() (map[string]string, error) {
-	if l.tokenSource == nil {
+	rootKey, rootKeyOK := l.apikeys[l.env.LoginDomain][keyDescRoot]
+	switch {
+	case rootKeyOK:
+		return map[string]string{
+			"X-Ambassador-Api-Key": rootKey,
+		}, nil
+	case l.tokenSource != nil:
+		tokenInfo, err := l.tokenSource.Token()
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{
+			"Authorization": "Bearer " + tokenInfo.AccessToken,
+		}, nil
+	default:
 		return nil, ErrNotLoggedIn
 	}
-
-	tokenInfo, err := l.tokenSource.Token()
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string]string{
-		"Authorization": "Bearer " + tokenInfo.AccessToken,
-	}, nil
 }
 
 func (l *loginExecutor) GetUserInfo(ctx context.Context, refresh bool) (*authdata.UserInfo, error) {

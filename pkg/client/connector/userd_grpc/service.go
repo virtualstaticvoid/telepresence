@@ -149,13 +149,19 @@ func (s *service) UserNotifications(_ *empty.Empty, stream rpc.Connector_UserNot
 	return nil
 }
 
-func (s *service) Login(ctx context.Context, _ *empty.Empty) (*rpc.LoginResult, error) {
+func (s *service) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.LoginResult, error) {
 	ctx = s.callCtx(ctx, "Login")
 	if _, err := s.sharedState.LoginExecutor.GetUserInfo(ctx, false); err == nil {
 		return &rpc.LoginResult{Code: rpc.LoginResult_OLD_LOGIN_REUSED}, nil
 	}
-	if err := s.sharedState.LoginExecutor.Login(ctx); err != nil {
-		return nil, err
+	if apikey := req.GetApiKey(); apikey != "" {
+		if err := s.sharedState.LoginExecutor.LoginAPIKey(ctx, apikey); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := s.sharedState.LoginExecutor.Login(ctx); err != nil {
+			return nil, err
+		}
 	}
 	return &rpc.LoginResult{Code: rpc.LoginResult_NEW_LOGIN_SUCCEEDED}, nil
 }
