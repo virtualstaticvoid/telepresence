@@ -89,8 +89,7 @@ func (ts *telepresenceSuite) SetupSuite() {
 	err = run(ctx, "sudo", "true")
 	require.NoError(err, "acquire privileges")
 
-	registry := dtest.DockerRegistry(ctx)
-	os.Setenv("TELEPRESENCE_REGISTRY", registry)
+	_ = dtest.DockerRegistry(ctx)
 	os.Setenv("TELEPRESENCE_MANAGER_NAMESPACE", ts.managerTestNamespace)
 
 	wg.Add(1)
