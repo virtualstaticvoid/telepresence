@@ -32,7 +32,7 @@ import (
 )
 
 type Callbacks struct {
-	GetAPIKey       func(context.Context, string, bool) (string, error)
+	GetCloudAPIKey  func(context.Context, string, bool) (string, error)
 	SetClient       func(client manager.ManagerClient, callOptions ...grpc.CallOption)
 	SetOutboundInfo func(ctx context.Context, in *daemon.OutboundInfo, opts ...grpc.CallOption) (*empty.Empty, error)
 }
@@ -168,7 +168,7 @@ func (tm *trafficManager) Run(c context.Context) error {
 		InstallId: tm.installID,
 		Product:   "telepresence",
 		Version:   client.Version(),
-		ApiKey:    func() string { tok, _ := tm.callbacks.GetAPIKey(c, "manager", false); return tok }(),
+		ApiKey:    func() string { tok, _ := tm.callbacks.GetCloudAPIKey(c, "manager", false); return tok }(),
 	})
 	if err != nil {
 		return client.CheckTimeout(tc, fmt.Errorf("manager.ArriveAsClient: %w", err))
@@ -414,7 +414,7 @@ func (tm *trafficManager) remain(c context.Context) error {
 		case <-ticker.C:
 			_, err := tm.managerClient.Remain(c, &manager.RemainRequest{
 				Session: tm.session(),
-				ApiKey:  func() string { tok, _ := tm.callbacks.GetAPIKey(c, "manager", false); return tok }(),
+				ApiKey:  func() string { tok, _ := tm.callbacks.GetCloudAPIKey(c, "manager", false); return tok }(),
 			})
 			if err != nil {
 				if c.Err() != nil {
