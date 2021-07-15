@@ -90,7 +90,6 @@ func (ts *telepresenceSuite) SetupSuite() {
 	require.NoError(err, "acquire privileges")
 
 	registry := dtest.DockerRegistry(ctx)
-	os.Setenv("KO_DOCKER_REPO", registry)
 	os.Setenv("TELEPRESENCE_REGISTRY", registry)
 	os.Setenv("TELEPRESENCE_MANAGER_NAMESPACE", ts.managerTestNamespace)
 
@@ -1362,7 +1361,7 @@ func (ts *telepresenceSuite) publishManager() error {
 		"TELEPRESENCE_VERSION=" + ts.testVersion,
 		"TELEPRESENCE_REGISTRY=" + dtest.DockerRegistry(ctx),
 	}
-	includeEnv := []string{"KO_DOCKER_REPO=", "HOME=", "PATH=", "LOGNAME=", "TMPDIR=", "MAKELEVEL="}
+	includeEnv := []string{"HOME=", "PATH=", "LOGNAME=", "TMPDIR=", "MAKELEVEL="}
 	for _, env := range os.Environ() {
 		for _, incl := range includeEnv {
 			if strings.HasPrefix(env, incl) {
