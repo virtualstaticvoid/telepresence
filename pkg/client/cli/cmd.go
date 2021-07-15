@@ -10,8 +10,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/datawire/ambassador/pkg/kates"
-	"github.com/telepresenceio/telepresence/v2/pkg/client/connector"
-	"github.com/telepresenceio/telepresence/v2/pkg/client/daemon"
 )
 
 var help = `Telepresence can connect to a cluster and route all outbound traffic from your
@@ -132,11 +130,6 @@ func Command(ctx context.Context) *cobra.Command {
 			return nil
 		})
 	*/
-
-	// Hidden/internal commands. These are called by Telepresence itself from
-	// the correct context and execute in-place immediately.
-	rootCmd.AddCommand(daemon.Command())
-	rootCmd.AddCommand(connector.Command())
 
 	globalFlagGroups = []FlagGroup{
 		{

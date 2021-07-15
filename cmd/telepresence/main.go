@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/telepresenceio/telepresence/v2/pkg/client/cli"
+	"github.com/telepresenceio/telepresence/v2/pkg/client/connector"
+	"github.com/telepresenceio/telepresence/v2/pkg/client/daemon"
 	"github.com/telepresenceio/telepresence/v2/pkg/filelocation"
 )
 
@@ -19,6 +21,8 @@ func main() {
 	}
 
 	cmd := cli.Command(ctx)
+	cmd.AddCommand(daemon.Command())
+	cmd.AddCommand(connector.Command())
 	if err := cmd.ExecuteContext(ctx); err != nil {
 		fmt.Fprintf(cmd.ErrOrStderr(), "%s: error: %v\n", cmd.CommandPath(), err)
 		os.Exit(1)
