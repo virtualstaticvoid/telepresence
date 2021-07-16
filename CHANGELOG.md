@@ -2,6 +2,11 @@
 
 ### 2.3.6 (TBD)
 
+- Feature: `telepresence login` now has an `--apikey=KEY` flag that
+  allows for non-interactive logins.  This is useful for headless
+  machines and Docker containers where launching a web-browser is
+  impossible.
+
 - Bugfix: Fixed an issue that could cause the user daemon to crash
   during shutdown.
 
