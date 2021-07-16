@@ -284,7 +284,9 @@ func (l *loginExecutor) Login(ctx context.Context) (err error) {
 			}
 		default:
 			fmt.Fprintln(l.stdout, "Login successful.")
-			_ = l.lockedRetrieveUserInfo(ctx, token)
+			_ = l.lockedRetrieveUserInfo(ctx, map[string]string{
+				"Authorization": "Bearer " + token.AccessToken,
+			})
 			l.scout <- scout.ScoutReport{
 				Action: "login_success",
 			}
@@ -376,7 +378,7 @@ func (l *loginExecutor) getToken(ctx context.Context) (string, error) {
 }
 
 // Must hold l.loginMu to call this.
-func (l *loginExecutor) lockedGetCreds() (*oauth2.Token, error) {
+func (l *loginExecutor) lockedGetCreds() (map[string]string, error) {
 	if l.tokenSource == nil {
 		return nil, ErrNotLoggedIn
 	}
@@ -386,7 +388,9 @@ func (l *loginExecutor) lockedGetCreds() (*oauth2.Token, error) {
 		return nil, err
 	}
 
-	return tokenInfo, nil
+	return map[string]string{
+		"Authorization": "Bearer " + tokenInfo.AccessToken,
+	}, nil
 }
 
 func (l *loginExecutor) GetUserInfo(ctx context.Context, refresh bool) (*authdata.UserInfo, error) {
@@ -420,7 +424,7 @@ func (l *loginExecutor) GetAPIKey(ctx context.Context, description string) (stri
 	if err != nil {
 		return "", fmt.Errorf("GetAPIKey: %w", err)
 	}
-	key, err := getAPIKey(ctx, l.env, creds.AccessToken, description)
+	key, err := getAPIKey(ctx, l.env, creds, description)
 	if err != nil {
 		return "", err
 	}
@@ -433,13 +437,15 @@ func (l *loginExecutor) GetAPIKey(ctx context.Context, description string) (stri
 }
 
 // Must hold l.loginMu to call this.
-func (l *loginExecutor) lockedRetrieveUserInfo(ctx context.Context, token *oauth2.Token) error {
+func (l *loginExecutor) lockedRetrieveUserInfo(ctx context.Context, creds map[string]string) error {
 	var userInfo authdata.UserInfo
 	req, err := http.NewRequest("GET", l.env.UserInfoURL, nil)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.AccessToken))
+	for k, v := range creds {
+		req.Header.Set(k, v)
+	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
