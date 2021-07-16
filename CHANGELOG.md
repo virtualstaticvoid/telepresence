@@ -4,6 +4,7 @@
 
 - Bugfix: Fixed an issue that could cause the user daemon to crash
   during shutdown.
+- Bugfix: Made `telepresence list` command faster.
 
 ### 2.3.5 (July 15, 2021)
 
