@@ -62,12 +62,13 @@ generate-clean: ## (Generate) Delete generated files that get checked in to Git
 TELEPRESENCE_BASE_VERSION := $(firstword $(shell shasum base-image/Dockerfile))
 .PHONY: base-image
 base-image: base-image/Dockerfile # Intentionally not in 'make help'
-	#if ! docker pull $(TELEPRESENCE_REGISTRY)/tel2-base:$(TELEPRESENCE_BASE_VERSION); then \
-	#  cd base-image && docker build --pull -t $(TELEPRESENCE_REGISTRY)/tel2-base:$(TELEPRESENCE_BASE_VERSION) . && \
-	#  docker push $(TELEPRESENCE_REGISTRY)/tel2-base:$(TELEPRESENCE_BASE_VERSION); \
-	#fi
-
-	cd base-image && docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7 --tag $(TELEPRESENCE_REGISTRY)/tel2-base:$(TELEPRESENCE_BASE_VERSION) --push .
+	if ! docker pull $(TELEPRESENCE_REGISTRY)/tel2-base:$(TELEPRESENCE_BASE_VERSION); then \
+		cd base-image && \
+			docker buildx build \
+				--platform linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7 \
+				--tag $(TELEPRESENCE_REGISTRY)/tel2-base:$(TELEPRESENCE_BASE_VERSION) \
+				--push .; \
+	fi
 
 PKG_VERSION = $(shell go list ./pkg/version)
 

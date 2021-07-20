@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine:3.13 as tel2-base
+FROM alpine:3.14 as tel2-base
+
 RUN \
   apk add --no-cache openssh-sftp-server ca-certificates && \
   mkdir /home/telepresence && \
