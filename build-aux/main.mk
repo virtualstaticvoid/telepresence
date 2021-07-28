@@ -24,6 +24,8 @@ BINDIR=$(BUILDDIR)/bin
 
 bindir ?= $(or $(shell go env GOBIN),$(shell go env GOPATH|cut -d: -f1)/bin)
 
+architectures ?= amd64 arm64 arm/v6 arm/v7
+
 # Generate: artifacts that get checked in to Git
 # ==============================================
 
@@ -60,12 +62,17 @@ generate-clean: ## (Generate) Delete generated files that get checked in to Git
 # =================================================
 
 TELEPRESENCE_BASE_VERSION := $(firstword $(shell shasum base-image/Dockerfile))
+
+comma := ,
+empty :=
+space := $(empty) $(empty)
+
 .PHONY: base-image
 base-image: base-image/Dockerfile # Intentionally not in 'make help'
 	if ! docker pull $(TELEPRESENCE_REGISTRY)/tel2-base:$(TELEPRESENCE_BASE_VERSION); then \
 		cd base-image && \
 			docker buildx build \
-				--platform linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7 \
+				--platform $(subst $(space),$(comma),$(addprefix linux/,$(architectures))) \
 				--tag $(TELEPRESENCE_REGISTRY)/tel2-base:$(TELEPRESENCE_BASE_VERSION) \
 				--push .; \
 	fi
@@ -79,32 +86,21 @@ build: ## (Build) Build all the source code
 
 .ko.yaml: .ko.yaml.in base-image
 	sed $(foreach v,TELEPRESENCE_REGISTRY TELEPRESENCE_BASE_VERSION, -e 's|@$v@|$($v)|g') <$< >$@
-.PHONY: image push-image
-image: .ko.yaml $(tools/ko) ## (Build) Build/tag the manager/agent container image
-	for arch in amd64 arm64 arm/v6 arm/v7; do \
-		localname=$$(GOFLAGS="-ldflags=-X=$(PKG_VERSION).Version=$(TELEPRESENCE_VERSION) -trimpath" \
-			ko publish --platform=linux/$$arch --local ./cmd/traffic); \
-		docker tag "$$localname" "$(TELEPRESENCE_REGISTRY)/tel2:$(patsubst v%,%,$(TELEPRESENCE_VERSION))-$$(echo $$arch | sed 's|\/||g')"; \
-		# individual images have to be pushed for manifest create to work :-( \
-		docker push "$(TELEPRESENCE_REGISTRY)/tel2:$(patsubst v%,%,$(TELEPRESENCE_VERSION))-$$(echo $$arch | sed 's|\/||g')"; \
-	done
 
-	@# the manifest list itself stays local until the push-image task is executed
-	@# thus there will be manual registry clean up required for failed builds
-	@# hopefully docker will make it possible to do this all locally in future
+arch_images := $(addprefix arch-,$(architectures))
+
+.PHONY: image push-image
+image: .ko.yaml $(tools/ko) arch-images ## (Build) Build/tag the manager/agent container image
 	DOCKER_CLI_EXPERIMENTAL=enabled \
 	docker manifest create $(TELEPRESENCE_REGISTRY)/tel2:$(patsubst v%,%,$(TELEPRESENCE_VERSION)) \
-		$(TELEPRESENCE_REGISTRY)/tel2:$(patsubst v%,%,$(TELEPRESENCE_VERSION))-amd64 \
-		$(TELEPRESENCE_REGISTRY)/tel2:$(patsubst v%,%,$(TELEPRESENCE_VERSION))-arm64 \
-		$(TELEPRESENCE_REGISTRY)/tel2:$(patsubst v%,%,$(TELEPRESENCE_VERSION))-armv6 \
-		$(TELEPRESENCE_REGISTRY)/tel2:$(patsubst v%,%,$(TELEPRESENCE_VERSION))-armv7
+		$(foreach arch,$(architectures),$(TELEPRESENCE_REGISTRY)/tel2-$(arch):$(patsubst v%,%,$(TELEPRESENCE_VERSION)))
 
-	@# if it is okay to build _and push_ then the following can replace all of ^^^
-	@#KO_DOCKER_REPO="$(TELEPRESENCE_REGISTRY)/tel2" \
-	@#	GOFLAGS="-ldflags=-X=$(PKG_VERSION).Version=$(TELEPRESENCE_VERSION) -trimpath" \
-	@#		ko publish --platform=all --bare --tags "$(patsubst v%,%,$(TELEPRESENCE_VERSION))" --push ./cmd/traffic
-
-	@# alternatively have a local registry, and copy images to the remote registry when executing push-image
+.PHONY: arch-images $(arch_images)
+arch-images: $(arch_images)
+$(arch_images): arch-%:
+	localname=$$(GOFLAGS="-ldflags=-X=$(PKG_VERSION).Version=$(TELEPRESENCE_VERSION) -trimpath" ko publish --platform=linux/$* --local ./cmd/traffic) && \
+		docker tag "$$localname" "$(TELEPRESENCE_REGISTRY)/tel2-$*:$(patsubst v%,%,$(TELEPRESENCE_VERSION))"
+	docker push "$(TELEPRESENCE_REGISTRY)/tel2-$*:$(patsubst v%,%,$(TELEPRESENCE_VERSION))"
 
 .PHONY: push-image
 push-image: image ## (Build) Push the manager/agent container image to $(TELEPRESENCE_REGISTRY)
